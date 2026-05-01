@@ -1,0 +1,19 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "local-vcpkg",
+      "inherits": "x64-debug",
+      "environment": {
+        "VCPKG_ROOT": "C:/Users/metak/Documents/CS4220/WaterSimulation/vcpkg"
+      }
+    },
+    {
+      "name": "local-vcpkg-release",
+      "inherits": "x64-release",
+      "environment": {
+        "VCPKG_ROOT": "C:/Users/metak/Documents/CS4220/WaterSimulation/vcpkg"
+      }
+    }
+  ]
+}
