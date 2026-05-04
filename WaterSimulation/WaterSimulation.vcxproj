@@ -54,6 +54,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 13.2.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -129,9 +130,6 @@
   <ItemGroup>
     <None Include="CMakePresets.json" />
     <None Include="CMakeUserPresets.json" />
-    <None Include="src\HashKernel.cu" />
-    <None Include="src\HashKernel.cuh" />
-    <None Include="src\Simulation.cu" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
@@ -144,11 +142,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\DensityKernel.cuh" />
+    <ClInclude Include="src\ForceKernel.cuh" />
+    <ClInclude Include="src\HashKernel.cuh" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\Particle.h" />
-    <ClInclude Include="src\Simulation.h" />
+    <ClInclude Include="src\Simulation.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\DensityKernel.cu" />
+    <CudaCompile Include="src\ForceKernel.cu" />
+    <CudaCompile Include="src\HashKernel.cu" />
+    <CudaCompile Include="src\Simulation.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 13.2.targets" />
   </ImportGroup>
 </Project>
