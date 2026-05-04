@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+
+#include <cuda_runtime.h>
 #include <GL/glew.h>
 
 struct SimulationConfig {
@@ -13,11 +16,13 @@ struct SimulationConfig {
 
 class WaterSimulation {
 public:
-	WaterSimulation();
+	WaterSimulation(int GridX, int GridY, int GridZ);
 	~WaterSimulation();
 
 	bool init(const SimulationConfig& config);
 	void shutdown();
+
+	void MakeGrid();
 
 	void step();
 	void inject(float x, float y, float radius, float amplitude);
@@ -27,6 +32,26 @@ public:
 	int getHeight() const;
 
 private:
+	float3 BoxMin;
+	float3 BoxMax;
+	int3 CellGridResolution;
+	float CellSize;
+	int ParticleGridXSize;
+	int ParticleGridYSize;
+	int ParticleGridZSize;
+	float ParticleSpacing;
+	float RestDensity;
+	float SmoothingRadius;
+	int TotalCellCount;
+	int TotalParticleCount;
+	float3 WaterStart;
+
+	std::vector<float3> HostPosition;
+	std::vector<float3> HostVelocity;
+	std::vector<float3> HostForce;
+	std::vector<float>  HostDensity;
+	std::vector<float>  HostPressure;
+
 	struct Impl;
 	Impl* impl;
 };

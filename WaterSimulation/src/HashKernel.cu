@@ -1,5 +1,13 @@
 #include "HashKernel.cuh"
 
+__device__ int3 CalculateCellGridPosition(float3 ParticlePosition, float3 BoxMin, float CellSize){
+	return make_int3(
+		floorf((ParticlePosition.x - BoxMin.x) / CellSize),
+		floorf((ParticlePosition.y - BoxMin.y) / CellSize),
+		floorf((ParticlePosition.z - BoxMin.z) / CellSize)
+	);
+}
+
 __device__ int calcGridHash(int3 gridPos, int3 gridRes){
 	// optionally wrap or clamp
 	if (gridPos.x < 0 || gridPos.x >= gridRes.x ||

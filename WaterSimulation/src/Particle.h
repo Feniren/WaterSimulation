@@ -1,6 +1,6 @@
 #include <vector_types.h>
 
-struct Particles {
+struct Particles{
 	float3* pos;
 	float3* vel;
 	float3* force;
