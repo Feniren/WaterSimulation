@@ -1,6 +1,17 @@
 #include "Simulation.cuh"
 
+#include "HashKernel.cuh"
+
 #include <cuda_gl_interop.h>
+
+#define CUDA_CHECK(Function) do { \
+    cudaError_t Error = (Function); \
+    \
+    if (Error != cudaSuccess){ \
+        printf("CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(Error)); \
+        exit(1); \
+    } \
+} while (0)
 
 struct WaterSimulation::Impl {
 	SimulationConfig cfg{};
@@ -41,11 +52,11 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ) : impl(new Imp
 
 	WaterStart = make_float3(0.2f, 0.2f, 0.2f);
 
-	HostPosition = std::vector<float3>(TotalParticleCount);
-	HostVelocity = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
-	HostForce = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
-	HostDensity = std::vector<float>(TotalParticleCount, RestDensity);
-	HostPressure = std::vector<float>(TotalParticleCount, 0.0f);
+	HostPositionList = std::vector<float3>(TotalParticleCount);
+	HostVelocityList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
+	HostForceList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
+	HostDensityList = std::vector<float>(TotalParticleCount, RestDensity);
+	HostPressureList = std::vector<float>(TotalParticleCount, 0.0f);
 }
 
 WaterSimulation::~WaterSimulation() {
@@ -65,7 +76,7 @@ void WaterSimulation::MakeGrid(){
 					break;
 				}
 				
-				HostPosition[Index] = make_float3(
+				HostPositionList[Index] = make_float3(
 					Start.x + X * ParticleSpacing,
 					Start.y + Y * ParticleSpacing,
 					Start.z + Z * ParticleSpacing
@@ -92,6 +103,27 @@ void WaterSimulation::step() {
 	// map GL texture
 	// write current height field into texture
 	// unmap
+
+	float3* DevicePositionList;
+	float3* DeviceVelocityList;
+	float3* DeviceForceList;
+	float* DeviceDensityList;
+	float* DevicePressureList;
+
+	int BlockSize = 256;
+	int GridSize = (TotalParticleCount + BlockSize - 1) / BlockSize;
+
+	CUDA_CHECK(cudaMalloc(&DevicePositionList, TotalParticleCount * sizeof(float3)));
+	CUDA_CHECK(cudaMalloc(&DeviceVelocityList, TotalParticleCount * sizeof(float3)));
+	CUDA_CHECK(cudaMalloc(&DeviceForceList, TotalParticleCount * sizeof(float3)));
+	CUDA_CHECK(cudaMalloc(&DeviceDensityList, TotalParticleCount * sizeof(float)));
+	CUDA_CHECK(cudaMalloc(&DevicePressureList, TotalParticleCount * sizeof(float)));
+
+	CUDA_CHECK(cudaMemcpy(DevicePositionList, HostPositionList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceVelocityList, HostVelocityList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceForceList, HostForceList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceDensityList, HostDensityList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DevicePressureList, HostPressureList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
 }
 
 void WaterSimulation::inject(float x, float y, float radius, float amplitude) {

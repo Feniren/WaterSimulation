@@ -46,11 +46,11 @@ private:
 	int TotalParticleCount;
 	float3 WaterStart;
 
-	std::vector<float3> HostPosition;
-	std::vector<float3> HostVelocity;
-	std::vector<float3> HostForce;
-	std::vector<float>  HostDensity;
-	std::vector<float>  HostPressure;
+	std::vector<float3> HostPositionList;
+	std::vector<float3> HostVelocityList;
+	std::vector<float3> HostForceList;
+	std::vector<float>  HostDensityList;
+	std::vector<float>  HostPressureList;
 
 	struct Impl;
 	Impl* impl;

@@ -8,26 +8,35 @@ __device__ int3 CalculateCellGridPosition(float3 ParticlePosition, float3 BoxMin
 	);
 }
 
-__device__ int calcGridHash(int3 gridPos, int3 gridRes){
-	// optionally wrap or clamp
-	if (gridPos.x < 0 || gridPos.x >= gridRes.x ||
-		gridPos.y < 0 || gridPos.y >= gridRes.y ||
-		gridPos.z < 0 || gridPos.z >= gridRes.z) {
-		return -1;
-	}
+__device__ int CalculateCellGridHash(int3 CellPosition, int3 CellGridResolution){
+	CellPosition = ClampCellGridPosition(CellPosition, CellGridResolution);
 
-	return gridPos.z * gridRes.y * gridRes.x +
-		gridPos.y * gridRes.x +
-		gridPos.x;
+	return CellPosition.z * CellGridResolution.y * CellGridResolution.x
+		+ CellPosition.y * CellGridResolution.x
+		+ CellPosition.x;
 }
 
-__global__ void computeHashes(int n, float3* pos, int* particleHash, int* particleIndex, float cellSize, int3 gridRes){
-	int i = blockIdx.x * blockDim.x + threadIdx.x;
-	if (i >= n) return;
+__device__ int3 ClampCellGridPosition(int3 CellPosition, int3 CellGridResolution){
+	CellPosition.x = std::max(0, std::min(CellPosition.x, CellGridResolution.x - 1));
+	CellPosition.y = std::max(0, std::min(CellPosition.y, CellGridResolution.y - 1));
+	CellPosition.z = std::max(0, std::min(CellPosition.z, CellGridResolution.z - 1));
 
-	int3 gridPos = calcGridPos(pos[i], cellSize);
-	int hash = calcGridHash(gridPos, gridRes);
+	return CellPosition;
+}
 
-	particleHash[i] = hash;
-	particleIndex[i] = i;
+__global__ void ComputeParticleHashes(int TotalParticleCount, const float3* ParticlePositionList, int* ParticleHashList, int* ParticleIndexList, float3 BoxMin, float CellSize, int3 CellGridResolution){
+	int ThreadID = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (ThreadID >= TotalParticleCount){
+		return;
+	}
+
+	float3 ParticlePosition = ParticlePositionList[ThreadID];
+
+	int3 CellGridPosition = CalculateCellGridPosition(ParticlePosition, BoxMin, CellSize);
+
+	int Hash = CalculateCellGridHash(CellGridPosition, CellGridResolution);
+
+	ParticleHashList[ThreadID] = Hash;
+	ParticleIndexList[ThreadID] = ThreadID;
 }
