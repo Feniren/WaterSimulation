@@ -1,8 +1,8 @@
 #include <cuda_runtime.h>
 #include <vector>
 #include <vector_types.h>
-#include <thrust/device_vector.h>
-#include <thrust/sort.h>
+//#include <thrust/device_vector.h>
+//#include <thrust/sort.h>
 
 __device__ int3 CalculateCellGridPosition(float3 ParticlePosition, float3 BoxMin, float CellSize);
 

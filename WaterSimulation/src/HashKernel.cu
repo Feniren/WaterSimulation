@@ -24,7 +24,15 @@ __device__ int3 ClampCellGridPosition(int3 CellPosition, int3 CellGridResolution
 	return CellPosition;
 }
 
-__global__ void ComputeParticleHashes(int TotalParticleCount, const float3* ParticlePositionList, int* ParticleHashList, int* ParticleIndexList, float3 BoxMin, float CellSize, int3 CellGridResolution){
+__global__ void ComputeParticleHashes(
+	int TotalParticleCount,
+	const float3* ParticlePositionList,
+	int* ParticleHashList,
+	int* ParticleIndexList,
+	float3 BoxMin,
+	float CellSize,
+	int3 CellGridResolution
+){
 	int ThreadID = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (ThreadID >= TotalParticleCount){

@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
+#include "Simulation.cuh"
+
 #include "Camera.h"
 
 int main() {
@@ -34,6 +36,11 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 
 	Camera camera(glm::vec3(0.0f, 3.0f, 6.0f));
+
+	WaterSimulation Sim(32, 32, 32);
+
+	Sim.MakeGrid();
+	Sim.step();
 
 	while (!glfwWindowShouldClose(window)) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

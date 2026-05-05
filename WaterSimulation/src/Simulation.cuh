@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <cuda_runtime.h>
+
 #include <GL/glew.h>
 
 struct SimulationConfig {
@@ -46,11 +47,13 @@ private:
 	int TotalParticleCount;
 	float3 WaterStart;
 
-	std::vector<float3> HostPositionList;
-	std::vector<float3> HostVelocityList;
-	std::vector<float3> HostForceList;
-	std::vector<float>  HostDensityList;
-	std::vector<float>  HostPressureList;
+	std::vector<int> HostParticleHashList;
+	std::vector<int> HostParticleIndexList;
+	std::vector<float3> HostParticlePositionList;
+	std::vector<float3> HostParticleVelocityList;
+	std::vector<float3> HostParticleForceList;
+	std::vector<float>  HostParticleDensityList;
+	std::vector<float>  HostParticlePressureList;
 
 	struct Impl;
 	Impl* impl;
