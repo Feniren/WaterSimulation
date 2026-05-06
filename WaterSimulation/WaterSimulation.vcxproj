@@ -142,6 +142,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\CellBoundsKernel.cuh" />
     <ClInclude Include="src\DensityKernel.cuh" />
     <ClInclude Include="src\ForceKernel.cuh" />
     <ClInclude Include="src\HashKernel.cuh" />
@@ -150,6 +151,7 @@
     <ClInclude Include="src\Simulation.cuh" />
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="src\CellBoundsKernel.cu" />
     <CudaCompile Include="src\DensityKernel.cu" />
     <CudaCompile Include="src\ForceKernel.cu" />
     <CudaCompile Include="src\HashKernel.cu" />

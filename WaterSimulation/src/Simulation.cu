@@ -1,21 +1,22 @@
 #include <iostream>
 
-#include <cuda_gl_interop.h>
+//#include <cuda_gl_interop.h>
 
 #include "Simulation.cuh"
 
+#include "CellBoundsKernel.cuh"
 #include "HashKernel.cuh"
 
 #define CUDA_CHECK(Function) do { \
     cudaError_t Error = (Function); \
     \
     if (Error != cudaSuccess){ \
-        printf("CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(Error)); \
+        printf("CUDA error %s:%d:\nCode: %d\nName: %s\nMessage: %s\n", __FILE__, __LINE__, (int)Error, cudaGetErrorName(Error), cudaGetErrorString(Error)); \
         exit(1); \
     } \
 } while (0)
 
-struct WaterSimulation::Impl {
+/*struct WaterSimulation::Impl {
 	SimulationConfig cfg{};
 
 	float* d_prev = nullptr;
@@ -24,7 +25,7 @@ struct WaterSimulation::Impl {
 
 	GLuint heightTex = 0;
 	cudaGraphicsResource* cudaHeightTex = nullptr;
-};
+};*/
 
 WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 	ParticleGridXSize = GridX;
@@ -56,6 +57,8 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 
 	HostParticleHashList = std::vector<int>(TotalParticleCount);
 	HostParticleIndexList = std::vector<int>(TotalParticleCount);
+	HostParticleCellStartList = std::vector<int>(TotalParticleCount, -1);
+	HostParticleCellEndList = std::vector<int>(TotalParticleCount, -1);
 	HostParticlePositionList = std::vector<float3>(TotalParticleCount);
 	HostParticleVelocityList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
 	HostParticleForceList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
@@ -65,13 +68,11 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 
 WaterSimulation::~WaterSimulation() {
 	shutdown();
-	delete impl;
+	//delete impl;
 }
 
 void WaterSimulation::MakeGrid(){
 	int Index = 0;
-
-	std::cout << "Make Grid Executing" << "\n";
 
 	for (int Z = 0; Z < ParticleGridZSize; Z++){
 		for (int Y = 0; Y < ParticleGridYSize; Y++){
@@ -92,13 +93,13 @@ void WaterSimulation::MakeGrid(){
 	}
 }
 
-bool WaterSimulation::init(const SimulationConfig& config) {
+/*bool WaterSimulation::init(const SimulationConfig& config) {
 	impl->cfg = config;
 	// allocate device buffers
 	// create GL texture
 	// register texture with CUDA
 	return true;
-}
+}*/
 
 void WaterSimulation::step(){
 	// launch update kernel
@@ -110,6 +111,8 @@ void WaterSimulation::step(){
 
 	int* DeviceParticleHashList;
 	int* DeviceParticleIndexList;
+	int* DeviceParticleCellStartList;
+	int* DeviceParticleCellEndList;
 	float3* DeviceParticlePositionList;
 	float3* DeviceParticleVelocityList;
 	float3* DeviceParticleForceList;
@@ -119,8 +122,10 @@ void WaterSimulation::step(){
 	int BlockSize = 256;
 	int GridSize = (TotalParticleCount + BlockSize - 1) / BlockSize;
 
-	CUDA_CHECK(cudaMalloc(&DeviceParticleHashList, TotalParticleCount * sizeof(int)));
-	CUDA_CHECK(cudaMalloc(&DeviceParticleIndexList, TotalParticleCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleHashList, TotalParticleCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleIndexList, TotalParticleCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellStartList, TotalParticleCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellEndList, TotalParticleCount * sizeof(int)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticlePositionList, TotalParticleCount * sizeof(float3)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticleVelocityList, TotalParticleCount * sizeof(float3)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticleForceList, TotalParticleCount * sizeof(float3)));
@@ -129,27 +134,52 @@ void WaterSimulation::step(){
 
 	CUDA_CHECK(cudaMemcpy(DeviceParticleHashList, HostParticleHashList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleIndexList, HostParticleIndexList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceParticleCellStartList, HostParticleCellStartList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceParticleCellEndList, HostParticleCellEndList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticlePositionList, HostParticlePositionList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleVelocityList, HostParticleVelocityList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleForceList, HostParticleForceList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleDensityList, HostParticleDensityList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticlePressureList, HostParticlePressureList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
 
-	ComputeParticleHashes<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticlePositionList, DeviceParticleHashList, DeviceParticleIndexList, BoxMin, CellSize, CellGridResolution);
+	ComputeParticleHashes<<<GridSize, BlockSize>>>(
+		TotalParticleCount,
+		DeviceParticlePositionList,
+		DeviceParticleHashList,
+		DeviceParticleIndexList,
+		BoxMin,
+		CellSize,
+		CellGridResolution
+	);
+
+	CUDA_CHECK(cudaDeviceSynchronize());
+
+	SortParticlesByHash(TotalParticleCount, DeviceParticleHashList, DeviceParticleIndexList);
 
 	CUDA_CHECK(cudaMemcpy(HostParticleHashList.data(), DeviceParticleHashList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
 	CUDA_CHECK(cudaMemcpy(HostParticleIndexList.data(), DeviceParticleIndexList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
 
-	for (int i = 0; i < 10; i++){
-		std::cout << "Particle " << i << " Hash = " << HostParticleHashList[i] << " Index = " << HostParticleIndexList[i] << std::endl;
+	for (int i = 0; i < TotalParticleCount; i++){
+		if (i < 20){
+			std::cout << "Sorted Particle " << i << " Hash = " << HostParticleHashList[i] << " Original Index = " << HostParticleIndexList[i] << std::endl;
+		}
+
+		if ((i > 0) && (HostParticleHashList[i] < HostParticleHashList[i - 1])){
+			std::cout << "Sorting failed at " << i << std::endl;
+		}
 	}
+
+	FindCellStartEnd<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticleHashList, DeviceParticleCellStartList, DeviceParticleCellEndList);
+
+	CUDA_CHECK(cudaGetLastError());
+	CUDA_CHECK(cudaDeviceSynchronize());
 }
 
 void WaterSimulation::inject(float x, float y, float radius, float amplitude) {
 	// launch impulse kernel
 }
 
-GLuint WaterSimulation::getHeightTexture() const {
+/*GLuint WaterSimulation::getHeightTexture() const {
 	return impl->heightTex;
 }
 
@@ -159,7 +189,7 @@ int WaterSimulation::getWidth() const {
 
 int WaterSimulation::getHeight() const {
 	return impl->cfg.height;
-}
+}*/
 
 void WaterSimulation::shutdown() {
 	// unregister interop resource

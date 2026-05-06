@@ -4,23 +4,23 @@
 
 #include <cuda_runtime.h>
 
-#include <GL/glew.h>
+//#include <GL/glew.h>
 
-struct SimulationConfig {
+/*struct SimulationConfig {
 	int width = 512;
 	int height = 512;
 	float dx = 1.0f;
 	float dt = 0.1f;
 	float waveSpeed = 1.2f;
 	float damping = 0.015f;
-};
+};*/
 
 class WaterSimulation {
 public:
 	WaterSimulation(int GridX, int GridY, int GridZ);
 	~WaterSimulation();
 
-	bool init(const SimulationConfig& config);
+	//bool init(const SimulationConfig& config);
 	void shutdown();
 
 	void MakeGrid();
@@ -28,9 +28,9 @@ public:
 	void step();
 	void inject(float x, float y, float radius, float amplitude);
 
-	GLuint getHeightTexture() const;
-	int getWidth() const;
-	int getHeight() const;
+	//GLuint getHeightTexture() const;
+	//int getWidth() const;
+	//int getHeight() const;
 
 private:
 	float3 BoxMin;
@@ -49,6 +49,8 @@ private:
 
 	std::vector<int> HostParticleHashList;
 	std::vector<int> HostParticleIndexList;
+	std::vector<int> HostParticleCellStartList;
+	std::vector<int> HostParticleCellEndList;
 	std::vector<float3> HostParticlePositionList;
 	std::vector<float3> HostParticleVelocityList;
 	std::vector<float3> HostParticleForceList;

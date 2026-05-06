@@ -1,6 +1,7 @@
+#include <iostream>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
 
 #include "Simulation.cuh"
 
@@ -36,7 +37,7 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 
 	Camera camera(glm::vec3(0.0f, 3.0f, 6.0f));
-
+	
 	WaterSimulation Sim(32, 32, 32);
 
 	Sim.MakeGrid();

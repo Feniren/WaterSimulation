@@ -47,11 +47,13 @@
     <ClInclude Include="src\DensityKernel.cuh" />
     <ClInclude Include="src\ForceKernel.cuh" />
     <ClInclude Include="src\HashKernel.cuh" />
+    <ClInclude Include="src\CellBoundsKernel.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\HashKernel.cu" />
     <CudaCompile Include="src\DensityKernel.cu" />
     <CudaCompile Include="src\Simulation.cu" />
     <CudaCompile Include="src\ForceKernel.cu" />
+    <CudaCompile Include="src\CellBoundsKernel.cu" />
   </ItemGroup>
 </Project>
