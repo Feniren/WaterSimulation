@@ -19,6 +19,7 @@ add_executable(WaterSimulation
 	src/Camera.cpp
 	src/Simulation.cu
 	src/HashKernel.cu
+	src/CellBoundsKernel.cu
 )
 
 target_compile_options(WaterSimulation PRIVATE

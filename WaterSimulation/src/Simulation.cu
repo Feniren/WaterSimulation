@@ -57,8 +57,8 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 
 	HostParticleHashList = std::vector<int>(TotalParticleCount);
 	HostParticleIndexList = std::vector<int>(TotalParticleCount);
-	HostParticleCellStartList = std::vector<int>(TotalParticleCount, -1);
-	HostParticleCellEndList = std::vector<int>(TotalParticleCount, -1);
+	HostParticleCellStartList = std::vector<int>(TotalCellCount, -1);
+	HostParticleCellEndList = std::vector<int>(TotalCellCount, -1);
 	HostParticlePositionList = std::vector<float3>(TotalParticleCount);
 	HostParticleVelocityList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
 	HostParticleForceList = std::vector<float3>(TotalParticleCount, make_float3(0.0f, 0.0f, 0.0f));
@@ -124,8 +124,8 @@ void WaterSimulation::step(){
 
 	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleHashList, TotalParticleCount * sizeof(int)));
 	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleIndexList, TotalParticleCount * sizeof(int)));
-	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellStartList, TotalParticleCount * sizeof(int)));
-	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellEndList, TotalParticleCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellStartList, TotalCellCount * sizeof(int)));
+	CUDA_CHECK(cudaMalloc((void**)&DeviceParticleCellEndList, TotalCellCount * sizeof(int)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticlePositionList, TotalParticleCount * sizeof(float3)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticleVelocityList, TotalParticleCount * sizeof(float3)));
 	CUDA_CHECK(cudaMalloc(&DeviceParticleForceList, TotalParticleCount * sizeof(float3)));
@@ -134,8 +134,8 @@ void WaterSimulation::step(){
 
 	CUDA_CHECK(cudaMemcpy(DeviceParticleHashList, HostParticleHashList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleIndexList, HostParticleIndexList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
-	CUDA_CHECK(cudaMemcpy(DeviceParticleCellStartList, HostParticleCellStartList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
-	CUDA_CHECK(cudaMemcpy(DeviceParticleCellEndList, HostParticleCellEndList.data(), TotalParticleCount * sizeof(int), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceParticleCellStartList, HostParticleCellStartList.data(), TotalCellCount * sizeof(int), cudaMemcpyHostToDevice));
+	CUDA_CHECK(cudaMemcpy(DeviceParticleCellEndList, HostParticleCellEndList.data(), TotalCellCount * sizeof(int), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticlePositionList, HostParticlePositionList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleVelocityList, HostParticleVelocityList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceParticleForceList, HostParticleForceList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
@@ -160,7 +160,7 @@ void WaterSimulation::step(){
 	CUDA_CHECK(cudaMemcpy(HostParticleIndexList.data(), DeviceParticleIndexList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
 
 	for (int i = 0; i < TotalParticleCount; i++){
-		if (i < 20){
+		if (i < 5){
 			std::cout << "Sorted Particle " << i << " Hash = " << HostParticleHashList[i] << " Original Index = " << HostParticleIndexList[i] << std::endl;
 		}
 
@@ -173,6 +173,58 @@ void WaterSimulation::step(){
 
 	CUDA_CHECK(cudaGetLastError());
 	CUDA_CHECK(cudaDeviceSynchronize());
+
+	CUDA_CHECK(cudaMemcpy(HostParticleCellStartList.data(), DeviceParticleCellStartList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
+	CUDA_CHECK(cudaMemcpy(HostParticleCellEndList.data(), DeviceParticleCellEndList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
+
+	int printed = 0;
+	int countedParticles = 0;
+
+	bool valid = true;
+
+	for (int cell = 0; cell < TotalCellCount; cell++){
+		int start = HostParticleCellStartList[cell];
+		int end = HostParticleCellEndList[cell];
+
+		if (start == -1 && end == -1) {
+			continue;
+		}
+
+		if (start != -1){
+			countedParticles += (end - start);
+
+			if (printed < 5){
+				std::cout << "Cell " << cell
+					<< " Start = " << start
+					<< " End = " << end
+					<< " Count = " << (end - start)
+					<< std::endl;
+
+				printed++;
+			}
+		}
+
+		if (start < 0 || end < 0 || start > end || end > TotalParticleCount){
+			valid = false;
+
+			std::cout << "Invalid bounds for cell " << cell
+				<< " Start = " << start
+				<< " End = " << end
+				<< std::endl;
+
+			break;
+		}
+	}
+
+	if (valid){
+		std::cout << "Cell start/end bounds look valid." << std::endl;
+	}
+
+	std::cout << "Counted particles from cells = "
+		<< countedParticles
+		<< " / "
+		<< TotalParticleCount
+		<< std::endl;
 }
 
 void WaterSimulation::inject(float x, float y, float radius, float amplitude) {
