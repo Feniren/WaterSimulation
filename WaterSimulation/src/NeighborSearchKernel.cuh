@@ -2,18 +2,14 @@
 
 #include <cuda_runtime.h>
 
-__device__ float Poly6Kernel(float DistanceSquared, float SmoothingRadiusSquared, float Poly6Coefficient);
-
-__global__ void ComputeDensity(
+__global__ void CountNeighbors(
 	int TotalParticleCount,
 	const float3* ParticlePositionList,
-	float* ParticleDensityList,
 	const int* ParticleCellStartList,
 	const int* ParticleCellEndList,
+	int* ParticleNeighborCountList,
 	float3 BoxMin,
 	float CellSize,
 	float SmoothingRadius,
-	float ParticleMass,
-	float Poly6Coefficient,
 	int3 CellGridResolution
 );

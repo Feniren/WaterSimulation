@@ -7,15 +7,15 @@
 
 #include "Camera.h"
 
-int main() {
-	if (!glfwInit()) {
+int main(){
+	if (!glfwInit()){
 		std::cerr << "Failed to init GLFW\n";
 		return -1;
 	}
 
 	GLFWwindow* window = glfwCreateWindow(800, 600, "WaterSimulation", nullptr, nullptr);
 
-	if (!window) {
+	if (!window){
 		std::cerr << "Failed to create window\n";
 
 		glfwTerminate();
@@ -25,7 +25,7 @@ int main() {
 
 	glfwMakeContextCurrent(window);
 
-	if (glewInit() != GLEW_OK) {
+	if (glewInit() != GLEW_OK){
 		std::cerr << "Failed to init GLEW\n";
 
 		glfwDestroyWindow(window);
@@ -43,7 +43,7 @@ int main() {
 	Sim.MakeGrid();
 	Sim.step();
 
-	while (!glfwWindowShouldClose(window)) {
+	while (!glfwWindowShouldClose(window)){
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 view = camera.GetViewMatrix();

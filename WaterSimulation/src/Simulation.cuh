@@ -40,7 +40,9 @@ private:
 	int ParticleGridXSize;
 	int ParticleGridYSize;
 	int ParticleGridZSize;
+	float ParticleMass;
 	float ParticleSpacing;
+	float Poly6Coefficient;
 	float RestDensity;
 	float SmoothingRadius;
 	int TotalCellCount;
@@ -51,8 +53,11 @@ private:
 	std::vector<int> HostParticleIndexList;
 	std::vector<int> HostParticleCellStartList;
 	std::vector<int> HostParticleCellEndList;
+	std::vector<int> HostParticleNeighborCountList;
 	std::vector<float3> HostParticlePositionList;
 	std::vector<float3> HostParticleVelocityList;
+	std::vector<float3> HostSortedParticlePositionList;
+	std::vector<float3> HostSortedParticleVelocityList;
 	std::vector<float3> HostParticleForceList;
 	std::vector<float>  HostParticleDensityList;
 	std::vector<float>  HostParticlePressureList;

@@ -2,6 +2,10 @@
 
 #include "HashKernel.cuh"
 
+#include <thrust/sort.h>
+#include <thrust/device_ptr.h>
+#include <thrust/execution_policy.h>
+
 __device__ int3 CalculateCellGridPosition(float3 ParticlePosition, float3 BoxMin, float CellSize){
 	return make_int3(
 		floorf((ParticlePosition.x - BoxMin.x) / CellSize),
@@ -10,8 +14,17 @@ __device__ int3 CalculateCellGridPosition(float3 ParticlePosition, float3 BoxMin
 	);
 }
 
-__device__ int CalculateCellGridHash(int3 CellPosition, int3 CellGridResolution){
-	CellPosition = ClampCellGridPosition(CellPosition, CellGridResolution);
+__device__ int CalculateCellGridHash(int3 CellPosition, int3 CellGridResolution, bool Clamp){
+	if (Clamp){
+		CellPosition = ClampCellGridPosition(CellPosition, CellGridResolution);
+	}
+	else{
+		if (CellPosition.x < 0 || CellPosition.x >= CellGridResolution.x ||
+			CellPosition.y < 0 || CellPosition.y >= CellGridResolution.y ||
+			CellPosition.z < 0 || CellPosition.z >= CellGridResolution.z){
+			return -1;
+		}
+	}
 
 	return CellPosition.z * CellGridResolution.y * CellGridResolution.x
 		+ CellPosition.y * CellGridResolution.x
@@ -45,7 +58,7 @@ __global__ void ComputeParticleHashes(
 
 	int3 CellGridPosition = CalculateCellGridPosition(ParticlePosition, BoxMin, CellSize);
 
-	int Hash = CalculateCellGridHash(CellGridPosition, CellGridResolution);
+	int Hash = CalculateCellGridHash(CellGridPosition, CellGridResolution, true);
 
 	ParticleHashList[ThreadID] = Hash;
 	ParticleIndexList[ThreadID] = ThreadID;

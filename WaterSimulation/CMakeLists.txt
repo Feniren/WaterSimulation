@@ -20,7 +20,12 @@ add_executable(WaterSimulation
 	src/Simulation.cu
 	src/HashKernel.cu
 	src/CellBoundsKernel.cu
+	src/ParticleReorderKernel.cu
+	src/NeighborSearchKernel.cu
 )
+
+set_property(TARGET WaterSimulation PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+set_property(TARGET WaterSimulation PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 target_compile_options(WaterSimulation PRIVATE
     $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:preprocessor>

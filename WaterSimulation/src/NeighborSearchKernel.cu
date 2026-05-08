@@ -1,28 +1,16 @@
-#include "DensityKernel.cuh"
+#include "NeighborSearchKernel.cuh"
 
 #include "HashKernel.cuh"
 
-__device__ float Poly6Kernel(float DistanceSquared, float SmoothingRadiusSquared, float Poly6Coefficient){
-	if (DistanceSquared >= SmoothingRadiusSquared){
-		return 0.0f;
-	}
-
-	float x = SmoothingRadiusSquared - DistanceSquared;
-
-	return Poly6Coefficient * x * x * x;
-}
-
-__global__ void ComputeDensity(
+__global__ void CountNeighbors(
 	int TotalParticleCount,
 	const float3* ParticlePositionList,
-	float* ParticleDensityList,
 	const int* ParticleCellStartList,
 	const int* ParticleCellEndList,
+	int* ParticleNeighborCountList,
 	float3 BoxMin,
 	float CellSize,
 	float SmoothingRadius,
-	float ParticleMass,
-	float Poly6Coefficient,
 	int3 CellGridResolution
 ){
 	int ThreadID = blockIdx.x * blockDim.x + threadIdx.x;
@@ -32,12 +20,10 @@ __global__ void ComputeDensity(
 	}
 
 	float3 PositionI = ParticlePositionList[ThreadID];
-
 	int3 BaseCell = CalculateCellGridPosition(PositionI, BoxMin, CellSize);
 
 	float SmoothingRadiusSquared = SmoothingRadius * SmoothingRadius;
-
-	float Density = 0.0f;
+	int Count = 0;
 
 	for (int dz = -1; dz <= 1; dz++){
 		for (int dy = -1; dy <= 1; dy++){
@@ -62,7 +48,8 @@ __global__ void ComputeDensity(
 
 				int End = ParticleCellEndList[NeighborHash];
 
-				for (int SortedJ = Start; SortedJ < End; SortedJ++){
+				for (int SortedJ = Start; SortedJ < End; SortedJ++)
+				{
 					float3 PositionJ = ParticlePositionList[SortedJ];
 
 					float3 r = make_float3(
@@ -72,12 +59,14 @@ __global__ void ComputeDensity(
 					);
 
 					float DistanceSquared = r.x * r.x + r.y * r.y + r.z * r.z;
-					
-					Density += ParticleMass * Poly6Kernel(DistanceSquared, SmoothingRadiusSquared, Poly6Coefficient);
+
+					if (DistanceSquared < SmoothingRadiusSquared){
+						Count++;
+					}
 				}
 			}
 		}
 	}
-
-	ParticleDensityList[ThreadID] = Density;
+	
+	ParticleNeighborCountList[ThreadID] = Count;
 }
