@@ -50,6 +50,7 @@
     <ClInclude Include="src\CellBoundsKernel.cuh" />
     <ClInclude Include="src\ParticleReorderKernel.cuh" />
     <ClInclude Include="src\NeighborSearchKernel.cuh" />
+    <ClInclude Include="src\PressureKernel.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\HashKernel.cu" />
@@ -59,5 +60,6 @@
     <CudaCompile Include="src\CellBoundsKernel.cu" />
     <CudaCompile Include="src\ParticleReorderKernel.cu" />
     <CudaCompile Include="src\NeighborSearchKernel.cu" />
+    <CudaCompile Include="src\PressureKernel.cu" />
   </ItemGroup>
 </Project>

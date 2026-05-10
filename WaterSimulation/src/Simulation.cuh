@@ -43,10 +43,13 @@ private:
 	float ParticleMass;
 	float ParticleSpacing;
 	float Poly6Coefficient;
+	float PressureStiffness;
 	float RestDensity;
+	float SpikyGradientCoefficient;
 	float SmoothingRadius;
 	int TotalCellCount;
 	int TotalParticleCount;
+	float ViscosityLaplacianCoefficient;
 	float3 WaterStart;
 
 	std::vector<int> HostParticleHashList;

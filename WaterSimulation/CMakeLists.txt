@@ -22,6 +22,8 @@ add_executable(WaterSimulation
 	src/CellBoundsKernel.cu
 	src/ParticleReorderKernel.cu
 	src/NeighborSearchKernel.cu
+	src/DensityKernel.cu
+	src/PressureKernel.cu
 )
 
 set_property(TARGET WaterSimulation PROPERTY CUDA_SEPARABLE_COMPILATION ON)

@@ -9,6 +9,7 @@
 #include "ParticleReorderKernel.cuh"
 #include "NeighborSearchKernel.cuh"
 #include "DensityKernel.cuh"
+#include "PressureKernel.cuh"
 
 #define CUDA_CHECK(Function) do { \
     cudaError_t Error = (Function); \
@@ -59,6 +60,12 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 	ParticleMass = (RestDensity * powf(ParticleSpacing, 3.0f));
 
 	Poly6Coefficient = (315.0f / (64.0f * 3.14159265358979323846f * powf(SmoothingRadius, 9.0f)));
+
+	PressureStiffness = 200.0f;
+
+	SpikyGradientCoefficient = (-45.0f / (3.14159265358979323846f * powf(SmoothingRadius, 6.0f)));
+
+	ViscosityLaplacianCoefficient = (45.0f / (3.14159265358979323846f * powf(SmoothingRadius, 6.0f)));
 
 	WaterStart = make_float3(0.2f, 0.2f, 0.2f);
 
@@ -157,9 +164,6 @@ void WaterSimulation::step(){
 	CUDA_CHECK(cudaMemcpy(DeviceParticleVelocityList, HostParticleVelocityList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceSortedParticlePositionList, HostSortedParticlePositionList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
 	CUDA_CHECK(cudaMemcpy(DeviceSortedParticleVelocityList, HostSortedParticleVelocityList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
-	CUDA_CHECK(cudaMemcpy(DeviceParticleForceList, HostParticleForceList.data(), TotalParticleCount * sizeof(float3), cudaMemcpyHostToDevice));
-	CUDA_CHECK(cudaMemcpy(DeviceParticleDensityList, HostParticleDensityList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_CHECK(cudaMemcpy(DeviceParticlePressureList, HostParticlePressureList.data(), TotalParticleCount * sizeof(float), cudaMemcpyHostToDevice));
 
 	ComputeParticleHashes<<<GridSize, BlockSize>>>(
 		TotalParticleCount,
@@ -354,10 +358,52 @@ void WaterSimulation::step(){
 	std::cout << "Density max = " << maxDensity << std::endl;
 	std::cout << "Density avg = " << avgDensity << std::endl;
 
-	for (int i = 0; i < std::min(20, TotalParticleCount); i++){
+	for (int i = 0; i < std::min(2, TotalParticleCount); i++){
 		std::cout << "Particle " << i
 			<< " Density = "
 			<< HostParticleDensityList[i]
+			<< std::endl;
+	}
+
+	ComputePressure<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticleDensityList, DeviceParticlePressureList, RestDensity, PressureStiffness);
+
+	CUDA_CHECK(cudaGetLastError());
+	CUDA_CHECK(cudaDeviceSynchronize());
+
+	CUDA_CHECK(cudaMemcpy(HostParticlePressureList.data(), DeviceParticlePressureList, TotalParticleCount * sizeof(float), cudaMemcpyDeviceToHost));
+
+	float minPressure = HostParticlePressureList[0];
+	float maxPressure = HostParticlePressureList[0];
+	double sumPressure = 0.0;
+	int positiveCount = 0;
+
+	for (int i = 0; i < TotalParticleCount; i++){
+		float p = HostParticlePressureList[i];
+
+		minPressure = std::min(minPressure, p);
+		maxPressure = std::max(maxPressure, p);
+		sumPressure += p;
+
+		if (p > 0.0f){
+			positiveCount++;
+		}
+	}
+
+	double avgPressure = sumPressure / TotalParticleCount;
+
+	std::cout << "Pressure min = " << minPressure << std::endl;
+	std::cout << "Pressure max = " << maxPressure << std::endl;
+	std::cout << "Pressure avg = " << avgPressure << std::endl;
+	std::cout << "Positive pressure particles = "
+		<< positiveCount
+		<< " / "
+		<< TotalParticleCount
+		<< std::endl;
+
+	for (int i = 0; i < std::min(20, TotalParticleCount); i++){
+		std::cout << "Particle " << i
+			<< " Density = " << HostParticleDensityList[i]
+			<< " Pressure = " << HostParticlePressureList[i]
 			<< std::endl;
 	}
 }
