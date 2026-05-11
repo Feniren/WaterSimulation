@@ -37,6 +37,7 @@ private:
 	float3 BoxMax;
 	int3 CellGridResolution;
 	float CellSize;
+	float3 GravityForce;
 	int ParticleGridXSize;
 	int ParticleGridYSize;
 	int ParticleGridZSize;
@@ -49,6 +50,7 @@ private:
 	float SmoothingRadius;
 	int TotalCellCount;
 	int TotalParticleCount;
+	float Viscosity;
 	float ViscosityLaplacianCoefficient;
 	float3 WaterStart;
 

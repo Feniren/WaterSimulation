@@ -10,6 +10,7 @@
 #include "NeighborSearchKernel.cuh"
 #include "DensityKernel.cuh"
 #include "PressureKernel.cuh"
+#include "ForceKernel.cuh"
 
 #define CUDA_CHECK(Function) do { \
     cudaError_t Error = (Function); \
@@ -53,6 +54,8 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 		(int)ceilf((BoxMax.z - BoxMin.z) / CellSize)
 	);
 
+	GravityForce = make_float3(0.0f, 0.0f, 0.0f);
+
 	TotalCellCount = (CellGridResolution.x * CellGridResolution.y * CellGridResolution.z);
 
 	ParticleSpacing = (0.5f * SmoothingRadius);
@@ -64,6 +67,8 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 	PressureStiffness = 200.0f;
 
 	SpikyGradientCoefficient = (-45.0f / (3.14159265358979323846f * powf(SmoothingRadius, 6.0f)));
+
+	Viscosity = 0.1f;
 
 	ViscosityLaplacianCoefficient = (45.0f / (3.14159265358979323846f * powf(SmoothingRadius, 6.0f)));
 
