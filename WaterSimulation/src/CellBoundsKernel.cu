@@ -25,3 +25,31 @@ __global__ void FindCellStartEnd(int TotalParticleCount, const int* ParticleHash
 		ParticleCellEndList[CurrentHash] = TotalParticleCount;
 	}
 }
+
+void FindCellStartEnd(
+	int TotalParticleCount,
+	int TotalCellCount,
+	const std::vector<int>& ParticleHashList,
+	std::vector<int>& ParticleCellStartList,
+	std::vector<int>& ParticleCellEndList
+){
+	for (int i = 0; i < TotalParticleCount; i++){
+		int CurrentHash = ParticleHashList[i];
+
+		if (i == 0){
+			ParticleCellStartList[CurrentHash] = 0;
+		}
+		else{
+			int PreviousHash = ParticleHashList[i - 1];
+
+			if (CurrentHash != PreviousHash){
+				ParticleCellStartList[CurrentHash] = i;
+				ParticleCellEndList[PreviousHash] = i;
+			}
+		}
+
+		if (i == TotalParticleCount - 1){
+			ParticleCellEndList[CurrentHash] = TotalParticleCount;
+		}
+	}
+}

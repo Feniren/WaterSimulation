@@ -15,7 +15,7 @@
 	float damping = 0.015f;
 };*/
 
-class WaterSimulation {
+class WaterSimulation{
 public:
 	WaterSimulation(int GridX, int GridY, int GridZ);
 	~WaterSimulation();
@@ -28,6 +28,7 @@ public:
 	void MakeGrid();
 
 	void Step(bool DebugStep);
+	void StepSerial(bool DebugStep);
 	void inject(float x, float y, float radius, float amplitude);
 
 	const std::vector<float3> GetParticlePositionList();

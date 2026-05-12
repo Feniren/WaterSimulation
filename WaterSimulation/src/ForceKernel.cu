@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "ForceKernel.cuh"
 
 #include "HashKernel.cuh"
@@ -22,7 +24,7 @@ __device__ float LengthFloat3(float3 a){
 	return sqrtf(DotProductFloat3(a, a));
 }
 
-__device__ float SpikyGradientMagnitude(
+__host__ __device__ float SpikyGradientMagnitude(
 	float r,
 	float h,
 	float SpikyGradientCoefficient
@@ -36,7 +38,7 @@ __device__ float SpikyGradientMagnitude(
 	return SpikyGradientCoefficient * x * x;
 }
 
-__device__ float ViscosityLaplacian(
+__host__ __device__ float ViscosityLaplacian(
 	float r,
 	float h,
 	float ViscosityLaplacianCoefficient
@@ -202,4 +204,156 @@ __global__ void ComputeForces(
 		PressureForce.y + ViscosityForce.y + Gravity.y,
 		PressureForce.z + ViscosityForce.z + Gravity.z
 	);
+}
+
+void ComputeForces(
+	int TotalParticleCount,
+	const std::vector<float3>& ParticlePositionList,
+	const std::vector<float3>& ParticleVelocityList,
+	const std::vector<float>& ParticleDensityList,
+	const std::vector<float>& ParticlePressureList,
+	std::vector<float3>& ParticleForceList,
+	const std::vector<int>& ParticleCellStartList,
+	const std::vector<int>& ParticleCellEndList,
+	float3 BoxMin,
+	float CellSize,
+	float SmoothingRadius,
+	float ParticleMass,
+	float Viscosity,
+	float3 GravityForce,
+	float SpikyGradientCoefficient,
+	float ViscosityLaplacianCoefficient,
+	int3 GridResolution
+){
+	float SmoothingRadiusSquared = SmoothingRadius * SmoothingRadius;
+
+	for (int i = 0; i < TotalParticleCount; i++){
+		float3 PositionI = ParticlePositionList[i];
+		float3 VelocityI = ParticleVelocityList[i];
+
+		float DensityI = std::max(ParticleDensityList[i], 1e-6f);
+		float PressureI = ParticlePressureList[i];
+
+		int3 BaseCell = CalculateCellGridPosition(PositionI, BoxMin, CellSize);
+
+		float3 PressureForce = make_float3(0.0f, 0.0f, 0.0f);
+		float3 ViscosityForce = make_float3(0.0f, 0.0f, 0.0f);
+
+		for (int dz = -1; dz <= 1; dz++){
+			for (int dy = -1; dy <= 1; dy++){
+				for (int dx = -1; dx <= 1; dx++){
+					int3 NeighborCell = make_int3(
+						BaseCell.x + dx,
+						BaseCell.y + dy,
+						BaseCell.z + dz
+					);
+
+					int NeighborHash = CalculateCellGridHash(NeighborCell, GridResolution, false);
+
+					if (NeighborHash == -1){
+						continue;
+					}
+
+					int Start = ParticleCellStartList[NeighborHash];
+
+					if (Start == -1){
+						continue;
+					}
+
+					int End = ParticleCellEndList[NeighborHash];
+
+					for (int j = Start; j < End; j++){
+						if (j == i){
+							continue;
+						}
+
+						float3 PositionJ = ParticlePositionList[j];
+
+						float3 RVector = make_float3(
+							PositionI.x - PositionJ.x,
+							PositionI.y - PositionJ.y,
+							PositionI.z - PositionJ.z
+						);
+
+						float DistanceSquared =
+							RVector.x * RVector.x +
+							RVector.y * RVector.y +
+							RVector.z * RVector.z;
+
+						if (DistanceSquared >= SmoothingRadiusSquared){
+							continue;
+						}
+
+						float r = std::sqrt(DistanceSquared);
+
+						if (r <= 1e-6f){
+							continue;
+						}
+
+						float DensityJ = std::max(ParticleDensityList[i], 1e-6f);
+						float PressureJ = ParticlePressureList[i];
+
+						float3 Direction = make_float3(
+							RVector.x / r,
+							RVector.y / r,
+							RVector.z / r
+						);
+
+						float GradientMagnitude = SpikyGradientMagnitude(
+							r,
+							SmoothingRadius,
+							SpikyGradientCoefficient
+						);
+
+						float PressureScalar =
+							-ParticleMass *
+							(PressureI + PressureJ) *
+							0.5f *
+							(1.0f / DensityJ) *
+							GradientMagnitude;
+
+						PressureForce.x += PressureScalar * Direction.x;
+						PressureForce.y += PressureScalar * Direction.y;
+						PressureForce.z += PressureScalar * Direction.z;
+
+						float Laplacian = ViscosityLaplacian(
+							r,
+							SmoothingRadius,
+							ViscosityLaplacianCoefficient
+						);
+
+						float3 VelocityJ = ParticleVelocityList[i];
+
+						float3 VelocityDifference = make_float3(
+							VelocityJ.x - VelocityI.x,
+							VelocityJ.y - VelocityI.y,
+							VelocityJ.z - VelocityI.z
+						);
+
+						float ViscosityScalar =
+							Viscosity *
+							ParticleMass *
+							(1.0f / DensityJ) *
+							Laplacian;
+
+						ViscosityForce.x += ViscosityScalar * VelocityDifference.x;
+						ViscosityForce.y += ViscosityScalar * VelocityDifference.y;
+						ViscosityForce.z += ViscosityScalar * VelocityDifference.z;
+					}
+				}
+			}
+		}
+
+		float3 Gravity = make_float3(
+			DensityI * GravityForce.x,
+			DensityI * GravityForce.y,
+			DensityI * GravityForce.z
+		);
+
+		ParticleForceList[i] = make_float3(
+			PressureForce.x + ViscosityForce.x + Gravity.x,
+			PressureForce.y + ViscosityForce.y + Gravity.y,
+			PressureForce.z + ViscosityForce.z + Gravity.z
+		);
+	}
 }

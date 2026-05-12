@@ -19,3 +19,19 @@ __global__ void ReorderParticles(
 	SortedParticlePositionList[ThreadID] = ParticlePositionList[OriginalIndex];
 	SortedParticleVelocityList[ThreadID] = ParticleVelocityList[OriginalIndex];
 }
+
+void ReorderParticles(
+	int TotalParticleCount,
+	const std::vector<int>& ParticleIndexList,
+	const std::vector<float3>& ParticlePositionList,
+	const std::vector<float3>& ParticleVelocityList,
+	std::vector<float3>& SortedParticlePositionList,
+	std::vector<float3>& SortedParticleVelocityList
+){
+	for (int SortedSlot = 0; SortedSlot < TotalParticleCount; SortedSlot++){
+		int OriginalIndex = ParticleIndexList[SortedSlot];
+
+		SortedParticlePositionList[SortedSlot] = ParticlePositionList[OriginalIndex];
+		SortedParticleVelocityList[SortedSlot] = ParticleVelocityList[OriginalIndex];
+	}
+}

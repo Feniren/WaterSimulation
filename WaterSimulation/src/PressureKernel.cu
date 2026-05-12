@@ -19,3 +19,19 @@ __global__ void ComputePressure(
 	
 	ParticlePressureList[ThreadID] = fmaxf(Pressure, 0.0f);
 }
+
+void ComputePressure(
+	int TotalParticleCount,
+	const std::vector<float>& ParticleDensityList,
+	std::vector<float>& ParticlePressureList,
+	float RestDensity,
+	float PressureStiffness
+){
+	for (int i = 0; i < TotalParticleCount; i++){
+		float Density = ParticleDensityList[i];
+
+		float Pressure = PressureStiffness * (Density - RestDensity);
+
+		ParticlePressureList[i] = std::max(Pressure, 0.0f);
+	}
+}

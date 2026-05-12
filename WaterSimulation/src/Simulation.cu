@@ -183,7 +183,6 @@ void WaterSimulation::Step(bool DebugStep){
 	}
 
 	CUDA_CHECK(cudaMemset(DeviceParticleCellStartList, 0xff, TotalCellCount * sizeof(int)));
-
 	CUDA_CHECK(cudaMemset(DeviceParticleCellEndList, 0xff, TotalCellCount * sizeof(int)));
 
 	FindCellStartEnd<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticleHashList, DeviceParticleCellStartList, DeviceParticleCellEndList);
@@ -300,6 +299,115 @@ void WaterSimulation::Step(bool DebugStep){
 
 	CUDA_CHECK(cudaMemcpy(HostParticlePositionList.data(), DeviceParticlePositionList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
 	CUDA_CHECK(cudaMemcpy(HostParticleVelocityList.data(), DeviceParticleVelocityList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
+
+	if (DebugStep){
+		DebugIntegrate(TotalParticleCount, HostParticlePositionList, HostParticleVelocityList);
+	}
+}
+
+void WaterSimulation::StepSerial(bool DebugStep){
+
+	ComputeParticleHashes(
+		TotalParticleCount,
+		HostParticlePositionList,
+		HostParticleHashList,
+		HostParticleIndexList,
+		BoxMin,
+		CellSize,
+		CellGridResolution
+	);
+
+	SortParticlesByHash(TotalParticleCount, HostParticleHashList, HostParticleIndexList);
+
+	if (DebugStep){
+		DebugSortParticleByHash(TotalParticleCount, HostParticleHashList, HostParticleIndexList);
+	}
+
+	std::fill(HostParticleCellStartList.begin(), HostParticleCellStartList.end(), -1);
+	std::fill(HostParticleCellEndList.begin(), HostParticleCellEndList.end(), -1);
+
+	FindCellStartEnd(TotalParticleCount, TotalCellCount, HostParticleHashList, HostParticleCellStartList, HostParticleCellEndList);
+
+	if (DebugStep){
+		DebugFindCellBoundaries(TotalParticleCount, TotalCellCount, HostParticleCellStartList, HostParticleCellEndList);
+	}
+
+	ReorderParticles(
+		TotalParticleCount,
+		HostParticleIndexList,
+		HostParticlePositionList,
+		HostParticleVelocityList,
+		HostSortedParticlePositionList,
+		HostSortedParticleVelocityList
+	);
+	
+	HostParticlePositionList.swap(HostSortedParticlePositionList);
+	HostParticleVelocityList.swap(HostSortedParticleVelocityList);
+
+	if (DebugStep){
+		DebugReorderParticles(TotalParticleCount, HostSortedParticlePositionList, HostParticleIndexList);
+	}
+
+	ComputeDensity(
+		TotalParticleCount,
+		HostParticlePositionList,
+		HostParticleDensityList,
+		HostParticleCellStartList,
+		HostParticleCellEndList,
+		BoxMin,
+		CellSize,
+		SmoothingRadius,
+		ParticleMass,
+		Poly6Coefficient,
+		CellGridResolution
+	);
+
+	if (DebugStep){
+		DebugComputeDensity(TotalParticleCount, HostParticleDensityList);
+	}
+
+	ComputePressure(TotalParticleCount, HostParticleDensityList, HostParticlePressureList, RestDensity, PressureStiffness);
+
+	if (DebugStep){
+		DebugComputePressure(TotalParticleCount, HostParticlePressureList, HostParticleDensityList);
+	}
+
+	ComputeForces(
+		TotalParticleCount,
+		HostParticlePositionList,
+		HostParticleVelocityList,
+		HostParticleDensityList,
+		HostParticlePressureList,
+		HostParticleForceList,
+		HostParticleCellStartList,
+		HostParticleCellEndList,
+		BoxMin,
+		CellSize,
+		SmoothingRadius,
+		ParticleMass,
+		Viscosity,
+		GravityForce,
+		SpikyGradientCoefficient,
+		ViscosityLaplacianCoefficient,
+		CellGridResolution
+	);
+
+	if (DebugStep){
+		DebugComputeForces(TotalParticleCount, HostParticleForceList);
+	}
+
+	Integrate(
+		TotalParticleCount,
+		HostParticlePositionList,
+		HostParticleVelocityList,
+		HostParticleForceList,
+		HostParticleDensityList,
+		TimeStep,
+		BoxMin,
+		BoxMax,
+		ParticleRadius,
+		BoundaryDamping
+	);
 
 	if (DebugStep){
 		DebugIntegrate(TotalParticleCount, HostParticlePositionList, HostParticleVelocityList);
