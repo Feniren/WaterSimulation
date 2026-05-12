@@ -18,12 +18,15 @@ add_executable(WaterSimulation
 	src/main.cpp
 	src/Camera.cpp
 	src/Simulation.cu
+	src/SimulationDebug.cu
 	src/HashKernel.cu
 	src/CellBoundsKernel.cu
 	src/ParticleReorderKernel.cu
 	src/NeighborSearchKernel.cu
 	src/DensityKernel.cu
 	src/PressureKernel.cu
+	src/ForceKernel.cu
+	src/IntegrationKernel.cu
 )
 
 set_property(TARGET WaterSimulation PROPERTY CUDA_SEPARABLE_COMPILATION ON)

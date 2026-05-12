@@ -130,6 +130,8 @@
   <ItemGroup>
     <None Include="CMakePresets.json" />
     <None Include="CMakeUserPresets.json" />
+    <None Include="src\FragmentShader.frag" />
+    <None Include="src\VertexShader.vert" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +141,7 @@
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Particle.cpp" />
+    <ClCompile Include="src\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Camera.h" />
@@ -146,22 +149,27 @@
     <ClInclude Include="src\DensityKernel.cuh" />
     <ClInclude Include="src\ForceKernel.cuh" />
     <ClInclude Include="src\HashKernel.cuh" />
+    <ClInclude Include="src\IntegrationKernel.cuh" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\NeighborSearchKernel.cuh" />
     <ClInclude Include="src\Particle.h" />
     <ClInclude Include="src\ParticleReorderKernel.cuh" />
     <ClInclude Include="src\PressureKernel.cuh" />
+    <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\Simulation.cuh" />
+    <ClInclude Include="src\SimulationDebug.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\CellBoundsKernel.cu" />
     <CudaCompile Include="src\DensityKernel.cu" />
     <CudaCompile Include="src\ForceKernel.cu" />
     <CudaCompile Include="src\HashKernel.cu" />
+    <CudaCompile Include="src\IntegrationKernel.cu" />
     <CudaCompile Include="src\NeighborSearchKernel.cu" />
     <CudaCompile Include="src\ParticleReorderKernel.cu" />
     <CudaCompile Include="src\PressureKernel.cu" />
     <CudaCompile Include="src\Simulation.cu" />
+    <CudaCompile Include="src\SimulationDebug.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

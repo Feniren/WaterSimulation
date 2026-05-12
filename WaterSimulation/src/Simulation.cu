@@ -4,6 +4,8 @@
 
 #include "Simulation.cuh"
 
+#include "SimulationDebug.cuh"
+
 #include "CellBoundsKernel.cuh"
 #include "HashKernel.cuh"
 #include "ParticleReorderKernel.cuh"
@@ -11,6 +13,7 @@
 #include "DensityKernel.cuh"
 #include "PressureKernel.cuh"
 #include "ForceKernel.cuh"
+#include "IntegrationKernel.cuh"
 
 #define CUDA_CHECK(Function) do { \
     cudaError_t Error = (Function); \
@@ -39,6 +42,8 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 
 	TotalParticleCount = (ParticleGridXSize * ParticleGridYSize * ParticleGridZSize);
 
+	BoundaryDamping = -0.5f;
+
 	BoxMin = make_float3(0.0f, 0.0f, 0.0f);
 	BoxMax = make_float3(2.0f, 2.0f, 2.0f);
 
@@ -54,7 +59,7 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 		(int)ceilf((BoxMax.z - BoxMin.z) / CellSize)
 	);
 
-	GravityForce = make_float3(0.0f, 0.0f, 0.0f);
+	GravityForce = make_float3(0.0f, -9.81f, 0.0f);
 
 	TotalCellCount = (CellGridResolution.x * CellGridResolution.y * CellGridResolution.z);
 
@@ -62,11 +67,15 @@ WaterSimulation::WaterSimulation(int GridX, int GridY, int GridZ){
 
 	ParticleMass = (RestDensity * powf(ParticleSpacing, 3.0f));
 
+	ParticleRadius = (0.5f * ParticleSpacing);
+
 	Poly6Coefficient = (315.0f / (64.0f * 3.14159265358979323846f * powf(SmoothingRadius, 9.0f)));
 
 	PressureStiffness = 200.0f;
 
 	SpikyGradientCoefficient = (-45.0f / (3.14159265358979323846f * powf(SmoothingRadius, 6.0f)));
+
+	TimeStep = 0.0002f;
 
 	Viscosity = 0.1f;
 
@@ -99,7 +108,7 @@ void WaterSimulation::MakeGrid(){
 	for (int Z = 0; Z < ParticleGridZSize; Z++){
 		for (int Y = 0; Y < ParticleGridYSize; Y++){
 			for (int X = 0; X < ParticleGridXSize; X++){
-				if (Index >= TotalParticleCount) {
+				if (Index >= TotalParticleCount){
 					break;
 				}
 				
@@ -123,14 +132,7 @@ void WaterSimulation::MakeGrid(){
 	return true;
 }*/
 
-void WaterSimulation::step(){
-	// launch update kernel
-	// apply boundaries
-	// swap prev/curr/next
-	// map GL texture
-	// write current height field into texture
-	// unmap
-
+void WaterSimulation::Step(bool DebugStep){
 	int* DeviceParticleHashList;
 	int* DeviceParticleIndexList;
 	int* DeviceParticleCellStartList;
@@ -184,17 +186,11 @@ void WaterSimulation::step(){
 
 	SortParticlesByHash(TotalParticleCount, DeviceParticleHashList, DeviceParticleIndexList);
 
-	CUDA_CHECK(cudaMemcpy(HostParticleHashList.data(), DeviceParticleHashList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
-	CUDA_CHECK(cudaMemcpy(HostParticleIndexList.data(), DeviceParticleIndexList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticleHashList.data(), DeviceParticleHashList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CHECK(cudaMemcpy(HostParticleIndexList.data(), DeviceParticleIndexList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
 
-	for (int i = 0; i < TotalParticleCount; i++){
-		if (i < 5){
-			std::cout << "Sorted Particle " << i << " Hash = " << HostParticleHashList[i] << " Original Index = " << HostParticleIndexList[i] << std::endl;
-		}
-
-		if ((i > 0) && (HostParticleHashList[i] < HostParticleHashList[i - 1])){
-			std::cout << "Sorting failed at " << i << std::endl;
-		}
+		DebugSortParticleByHash(TotalParticleCount, HostParticleHashList, HostParticleIndexList);
 	}
 
 	FindCellStartEnd<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticleHashList, DeviceParticleCellStartList, DeviceParticleCellEndList);
@@ -202,57 +198,12 @@ void WaterSimulation::step(){
 	CUDA_CHECK(cudaGetLastError());
 	CUDA_CHECK(cudaDeviceSynchronize());
 
-	CUDA_CHECK(cudaMemcpy(HostParticleCellStartList.data(), DeviceParticleCellStartList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
-	CUDA_CHECK(cudaMemcpy(HostParticleCellEndList.data(), DeviceParticleCellEndList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticleCellStartList.data(), DeviceParticleCellStartList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CHECK(cudaMemcpy(HostParticleCellEndList.data(), DeviceParticleCellEndList, TotalCellCount * sizeof(int), cudaMemcpyDeviceToHost));
 
-	int printed = 0;
-	int countedParticles = 0;
-
-	bool valid = true;
-
-	for (int cell = 0; cell < TotalCellCount; cell++){
-		int start = HostParticleCellStartList[cell];
-		int end = HostParticleCellEndList[cell];
-
-		if (start == -1 && end == -1) {
-			continue;
-		}
-
-		if (start != -1){
-			countedParticles += (end - start);
-
-			if (printed < 5){
-				std::cout << "Cell " << cell
-					<< " Start = " << start
-					<< " End = " << end
-					<< " Count = " << (end - start)
-					<< std::endl;
-
-				printed++;
-			}
-		}
-
-		if (start < 0 || end < 0 || start > end || end > TotalParticleCount){
-			valid = false;
-
-			std::cout << "Invalid bounds for cell " << cell
-				<< " Start = " << start
-				<< " End = " << end
-				<< std::endl;
-
-			break;
-		}
+		DebugFindCellBoundaries(TotalParticleCount, TotalCellCount, HostParticleCellStartList, HostParticleCellEndList);
 	}
-
-	if (valid){
-		std::cout << "Cell start/end bounds look valid." << std::endl;
-	}
-
-	std::cout << "Counted particles from cells = "
-		<< countedParticles
-		<< " / "
-		<< TotalParticleCount
-		<< std::endl;
 
 	ReorderParticles<<<GridSize, BlockSize>>>(
 		TotalParticleCount,
@@ -269,62 +220,11 @@ void WaterSimulation::step(){
 	std::swap(DeviceParticlePositionList, DeviceSortedParticlePositionList);
 	std::swap(DeviceParticleVelocityList, DeviceSortedParticleVelocityList);
 
-	CUDA_CHECK(cudaMemcpy(HostSortedParticlePositionList.data(), DeviceParticlePositionList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostSortedParticlePositionList.data(), DeviceParticlePositionList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
 
-	for (int i = 0; i < 2; i++){
-		int OriginalIndex = HostParticleIndexList[i];
-		float3 p = HostSortedParticlePositionList[i];
-
-		std::cout << "Sorted slot " << i
-			<< " Original Index = " << OriginalIndex
-			<< " Pos = ("
-			<< p.x << ", "
-			<< p.y << ", "
-			<< p.z << ")"
-			<< std::endl;
+		DebugReorderParticles(TotalParticleCount, HostSortedParticlePositionList, HostParticleIndexList);
 	}
-
-	CountNeighbors<<<GridSize, BlockSize>>>(
-		TotalParticleCount,
-		DeviceParticlePositionList,
-		DeviceParticleCellStartList,
-		DeviceParticleCellEndList,
-		DeviceParticleNeighborCountList,
-		BoxMin,
-		CellSize,
-		SmoothingRadius,
-		CellGridResolution
-	);
-
-	CUDA_CHECK(cudaGetLastError());
-	CUDA_CHECK(cudaDeviceSynchronize());
-
-	CUDA_CHECK(cudaMemcpy(HostParticleNeighborCountList.data(), DeviceParticleNeighborCountList, TotalParticleCount * sizeof(int), cudaMemcpyDeviceToHost));
-
-	for (int i = 0; i < 2; i++){
-		std::cout << "Particle " << i
-			<< " Neighbor Count = "
-			<< HostParticleNeighborCountList[i]
-			<< std::endl;
-	}
-
-	int minCount = HostParticleNeighborCountList[0];
-	int maxCount = HostParticleNeighborCountList[0];
-	long long sumCount = 0;
-
-	for (int i = 0; i < TotalParticleCount; i++){
-		int c = HostParticleNeighborCountList[i];
-
-		minCount = std::min(minCount, c);
-		maxCount = std::max(maxCount, c);
-		sumCount += c;
-	}
-
-	double avgCount = static_cast<double>(sumCount) / TotalParticleCount;
-
-	std::cout << "Neighbor count min = " << minCount << std::endl;
-	std::cout << "Neighbor count max = " << maxCount << std::endl;
-	std::cout << "Neighbor count avg = " << avgCount << std::endl;
 
 	ComputeDensity<<<GridSize, BlockSize>>>(
 		TotalParticleCount,
@@ -343,31 +243,10 @@ void WaterSimulation::step(){
 	CUDA_CHECK(cudaGetLastError());
 	CUDA_CHECK(cudaDeviceSynchronize());
 
-	CUDA_CHECK(cudaMemcpy(HostParticleDensityList.data(), DeviceParticleDensityList, TotalParticleCount * sizeof(float), cudaMemcpyDeviceToHost));
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticleDensityList.data(), DeviceParticleDensityList, TotalParticleCount * sizeof(float), cudaMemcpyDeviceToHost));
 
-	float minDensity = HostParticleDensityList[0];
-	float maxDensity = HostParticleDensityList[0];
-	double sumDensity = 0.0;
-
-	for (int i = 0; i < TotalParticleCount; i++){
-		float rho = HostParticleDensityList[i];
-
-		minDensity = std::min(minDensity, rho);
-		maxDensity = std::max(maxDensity, rho);
-		sumDensity += rho;
-	}
-
-	double avgDensity = sumDensity / TotalParticleCount;
-
-	std::cout << "Density min = " << minDensity << std::endl;
-	std::cout << "Density max = " << maxDensity << std::endl;
-	std::cout << "Density avg = " << avgDensity << std::endl;
-
-	for (int i = 0; i < std::min(2, TotalParticleCount); i++){
-		std::cout << "Particle " << i
-			<< " Density = "
-			<< HostParticleDensityList[i]
-			<< std::endl;
+		DebugComputeDensity(TotalParticleCount, HostParticleDensityList);
 	}
 
 	ComputePressure<<<GridSize, BlockSize>>>(TotalParticleCount, DeviceParticleDensityList, DeviceParticlePressureList, RestDensity, PressureStiffness);
@@ -375,41 +254,62 @@ void WaterSimulation::step(){
 	CUDA_CHECK(cudaGetLastError());
 	CUDA_CHECK(cudaDeviceSynchronize());
 
-	CUDA_CHECK(cudaMemcpy(HostParticlePressureList.data(), DeviceParticlePressureList, TotalParticleCount * sizeof(float), cudaMemcpyDeviceToHost));
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticlePressureList.data(), DeviceParticlePressureList, TotalParticleCount * sizeof(float), cudaMemcpyDeviceToHost));
 
-	float minPressure = HostParticlePressureList[0];
-	float maxPressure = HostParticlePressureList[0];
-	double sumPressure = 0.0;
-	int positiveCount = 0;
-
-	for (int i = 0; i < TotalParticleCount; i++){
-		float p = HostParticlePressureList[i];
-
-		minPressure = std::min(minPressure, p);
-		maxPressure = std::max(maxPressure, p);
-		sumPressure += p;
-
-		if (p > 0.0f){
-			positiveCount++;
-		}
+		DebugComputePressure(TotalParticleCount, HostParticlePressureList, HostParticleDensityList);
 	}
 
-	double avgPressure = sumPressure / TotalParticleCount;
+	ComputeForces<<<GridSize, BlockSize>>>(
+		TotalParticleCount,
+		DeviceParticlePositionList,
+		DeviceParticleVelocityList,
+		DeviceParticleDensityList,
+		DeviceParticlePressureList,
+		DeviceParticleForceList,
+		DeviceParticleCellStartList,
+		DeviceParticleCellEndList,
+		BoxMin,
+		CellSize,
+		SmoothingRadius,
+		ParticleMass,
+		Viscosity,
+		GravityForce,
+		SpikyGradientCoefficient,
+		ViscosityLaplacianCoefficient,
+		CellGridResolution
+	);
 
-	std::cout << "Pressure min = " << minPressure << std::endl;
-	std::cout << "Pressure max = " << maxPressure << std::endl;
-	std::cout << "Pressure avg = " << avgPressure << std::endl;
-	std::cout << "Positive pressure particles = "
-		<< positiveCount
-		<< " / "
-		<< TotalParticleCount
-		<< std::endl;
+	CUDA_CHECK(cudaGetLastError());
+	CUDA_CHECK(cudaDeviceSynchronize());
 
-	for (int i = 0; i < std::min(20, TotalParticleCount); i++){
-		std::cout << "Particle " << i
-			<< " Density = " << HostParticleDensityList[i]
-			<< " Pressure = " << HostParticlePressureList[i]
-			<< std::endl;
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticleForceList.data(), DeviceParticleForceList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
+
+		DebugComputeForces(TotalParticleCount, HostParticleForceList);
+	}
+
+	Integrate<<<GridSize, BlockSize>>>(
+		TotalParticleCount,
+		DeviceParticlePositionList,
+		DeviceParticleVelocityList,
+		DeviceParticleForceList,
+		DeviceParticleDensityList,
+		TimeStep,
+		BoxMin,
+		BoxMax,
+		ParticleRadius,
+		BoundaryDamping
+	);
+
+	CUDA_CHECK(cudaGetLastError());
+	CUDA_CHECK(cudaDeviceSynchronize());
+
+	if (DebugStep){
+		CUDA_CHECK(cudaMemcpy(HostParticlePositionList.data(), DeviceParticlePositionList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
+		CUDA_CHECK(cudaMemcpy(HostParticleVelocityList.data(), DeviceParticleVelocityList, TotalParticleCount * sizeof(float3), cudaMemcpyDeviceToHost));
+
+		DebugIntegrate(TotalParticleCount, HostParticlePositionList, HostParticleVelocityList);
 	}
 }
 

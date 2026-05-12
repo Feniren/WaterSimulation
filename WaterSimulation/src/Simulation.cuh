@@ -25,7 +25,7 @@ public:
 
 	void MakeGrid();
 
-	void step();
+	void Step(bool DebugStep);
 	void inject(float x, float y, float radius, float amplitude);
 
 	//GLuint getHeightTexture() const;
@@ -33,6 +33,7 @@ public:
 	//int getHeight() const;
 
 private:
+	float BoundaryDamping;
 	float3 BoxMin;
 	float3 BoxMax;
 	int3 CellGridResolution;
@@ -42,12 +43,14 @@ private:
 	int ParticleGridYSize;
 	int ParticleGridZSize;
 	float ParticleMass;
+	float ParticleRadius;
 	float ParticleSpacing;
 	float Poly6Coefficient;
 	float PressureStiffness;
 	float RestDensity;
 	float SpikyGradientCoefficient;
 	float SmoothingRadius;
+	float TimeStep;
 	int TotalCellCount;
 	int TotalParticleCount;
 	float Viscosity;

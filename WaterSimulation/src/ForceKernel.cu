@@ -95,7 +95,7 @@ __global__ void ComputeForces(
 					BaseCell.z + dz
 				);
 
-				int NeighborHash = CalcGridHash(NeighborCell, GridResolution, false);
+				int NeighborHash = CalculateCellGridHash(NeighborCell, GridResolution, false);
 
 				if (NeighborHash == -1){
 					continue;
