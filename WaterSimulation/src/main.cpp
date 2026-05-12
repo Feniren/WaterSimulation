@@ -20,6 +20,12 @@ float LastX = 400.0f;
 float LastY = 300.0f;
 bool FirstMouse = true;
 
+struct Vertex{
+	glm::vec3 Position;
+	glm::vec3 Normal;
+	glm::vec2 TexCoords;
+};
+
 void CreateSphereMesh(
 	std::vector<Vertex>& vertices,
 	std::vector<unsigned int>& indices,
@@ -112,12 +118,6 @@ void mouse_callback(GLFWwindow* window, double XPosition, double YPosition){
 	CameraReference.ProcessMouseMovement(xoffset, yoffset);
 }
 
-struct Vertex{
-	glm::vec3 Position;
-	glm::vec3 Normal;
-	glm::vec2 TexCoords;
-};
-
 int main(){
 	if (!glfwInit()){
 		std::cerr << "Failed to init GLFW\n";
@@ -152,24 +152,15 @@ int main(){
 		return -1;
 	}
 
-	Shader ShaderReference("../../../src/VertexShader.vert", "../../../src/FragmentShader.frag");
+	Shader ShaderReference("../../../src/Shaders/VertexShader.vert", "../../../src/Shaders/FragmentShader.frag");
+
+	Shader sphereShader("../../../src/Shaders/SphereShader.vert", "../../../src/Shaders/SphereShader.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	
 	WaterSimulation Sim(32, 32, 32);
 
-	Sim.MakeGrid();
-
-	for (int i = 0; i < 2; i++){
-		if (i % 10 == 0){
-			std::cout << "\n Step: " << i << std::endl;
-
-			Sim.Step(true);
-		}
-		else{
-			Sim.Step(false);
-		}
-	}
+	Sim.InitializeSimulation();
 
 	float planeVertices[] = {
 		// positions              // normals         // texcoords
@@ -280,7 +271,7 @@ int main(){
 		(void*)offsetof(Vertex, TexCoords)
 	);
 
-	const unsigned int maxSphereCount = 10000;
+	const unsigned int maxSphereCount = 100000;
 
 	glGenBuffers(1, &instancePositionVBO);
 
@@ -308,6 +299,9 @@ int main(){
 
 	glBindVertexArray(0);
 
+	int StepsPerFrame = 5;
+	int TimeStep = 0;
+
 	while (!glfwWindowShouldClose(window)){
 		float CurrentFrame = static_cast<float>(glfwGetTime());
 
@@ -332,6 +326,24 @@ int main(){
 			100.0f
 		);
 
+		for (int i = 0; i < StepsPerFrame; i++){
+			if ((TimeStep % 500) == 0){
+				Sim.Step(true);
+
+				if (TimeStep != 0){
+					TimeStep = 0;
+				}
+				else{
+					TimeStep++;
+				}
+			}
+			else{
+				Sim.Step(false);
+
+				TimeStep++;
+			}
+		}
+
 		ShaderReference.Use();
 
 		ShaderReference.SetMat4("model", Model);
@@ -344,6 +356,39 @@ int main(){
 
 		glBindVertexArray(planeVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		glBindBuffer(GL_ARRAY_BUFFER, instancePositionVBO);
+		glBufferSubData(
+			GL_ARRAY_BUFFER,
+			0,
+			Sim.GetParticlePositionList().size() * sizeof(float3),
+			Sim.GetParticlePositionList().data()
+		);
+
+		sphereShader.Use();
+
+		sphereShader.SetMat4("view", View);
+		sphereShader.SetMat4("projection", Projection);
+
+		sphereShader.SetFloat("sphereScale", 0.01f);
+		sphereShader.SetFloat("instancePositionScale", 1.0f);
+
+		sphereShader.SetVec3("lightPos", glm::vec3(2.0f, 8.0f, 2.0f));
+		sphereShader.SetVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+		sphereShader.SetVec3("objectColor", glm::vec3(0.1f, 0.5f, 0.75f));
+		sphereShader.SetVec3("viewPos", CameraReference.Position);
+
+		glBindVertexArray(sphereVAO);
+
+		glDrawElementsInstanced(
+			GL_TRIANGLES,
+			static_cast<unsigned int>(sphereIndices.size()),
+			GL_UNSIGNED_INT,
+			0,
+			static_cast<unsigned int>(Sim.GetParticlePositionList().size())
+		);
+
+		glBindVertexArray(0);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

@@ -23,10 +23,14 @@ public:
 	//bool init(const SimulationConfig& config);
 	void shutdown();
 
+	void InitializeSimulation();
+
 	void MakeGrid();
 
 	void Step(bool DebugStep);
 	void inject(float x, float y, float radius, float amplitude);
+
+	const std::vector<float3> GetParticlePositionList();
 
 	//GLuint getHeightTexture() const;
 	//int getWidth() const;
@@ -69,6 +73,19 @@ private:
 	std::vector<float3> HostParticleForceList;
 	std::vector<float>  HostParticleDensityList;
 	std::vector<float>  HostParticlePressureList;
+
+	int* DeviceParticleHashList;
+	int* DeviceParticleIndexList;
+	int* DeviceParticleCellStartList;
+	int* DeviceParticleCellEndList;
+	int* DeviceParticleNeighborCountList;
+	float3* DeviceParticlePositionList;
+	float3* DeviceParticleVelocityList;
+	float3* DeviceSortedParticlePositionList;
+	float3* DeviceSortedParticleVelocityList;
+	float3* DeviceParticleForceList;
+	float* DeviceParticleDensityList;
+	float* DeviceParticlePressureList;
 
 	struct Impl;
 	Impl* impl;

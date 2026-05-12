@@ -4,7 +4,7 @@
 
 void DebugSortParticleByHash(int TotalParticleCount, const std::vector<int>& ParticleHashList, const std::vector<int>& ParticleIndexList){
 	for (int i = 0; i < TotalParticleCount; i++){
-		if (i < 2){
+		if (i < 5){
 			std::cout << "Sorted Particle " << i << " Hash = " << ParticleHashList[i] << " Original Index = " << ParticleIndexList[i] << std::endl;
 		}
 
@@ -31,7 +31,7 @@ void DebugFindCellBoundaries(int TotalParticleCount, int TotalCellCount, const s
 		if (start != -1){
 			countedParticles += (end - start);
 
-			if (printed < 2){
+			if (printed < 5){
 				std::cout << "Cell " << cell
 					<< " Start = " << start
 					<< " End = " << end
@@ -66,7 +66,7 @@ void DebugFindCellBoundaries(int TotalParticleCount, int TotalCellCount, const s
 }
 
 void DebugReorderParticles(int TotalParticleCount, const std::vector<float3>& SortedParticlePositionList, const std::vector<int>& ParticleIndexList){
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 5; i++){
 		int OriginalIndex = ParticleIndexList[i];
 		float3 p = SortedParticlePositionList[i];
 
@@ -99,7 +99,7 @@ void DebugComputeDensity(int TotalParticleCount, const std::vector<float>& Parti
 	std::cout << "Density max = " << maxDensity << std::endl;
 	std::cout << "Density avg = " << avgDensity << std::endl;
 
-	for (int i = 0; i < std::min(2, TotalParticleCount); i++) {
+	for (int i = 0; i < std::min(5, TotalParticleCount); i++){
 		std::cout << "Particle " << i
 			<< " Density = "
 			<< ParticleDensityList[i]
@@ -136,7 +136,7 @@ void DebugComputePressure(int TotalParticleCount, const std::vector<float>& Part
 		<< TotalParticleCount
 		<< std::endl;
 
-	for (int i = 0; i < std::min(2, TotalParticleCount); i++){
+	for (int i = 0; i < std::min(5, TotalParticleCount); i++){
 		std::cout << "Particle " << i
 			<< " Density = " << ParticleDensityList[i]
 			<< " Pressure = " << ParticlePressureList[i]
@@ -169,7 +169,7 @@ void DebugComputeForces(int TotalParticleCount, const std::vector<float3>& Parti
 	std::cout << "Force magnitude max = " << maxForceMag << std::endl;
 	std::cout << "Force magnitude avg = " << avgForceMag << std::endl;
 
-	for (int i = 0; i < std::min(2, TotalParticleCount); i++){
+	for (int i = 0; i < std::min(5, TotalParticleCount); i++){
 		float3 f = ParticleForceList[i];
 
 		std::cout << "Particle " << i
@@ -188,7 +188,7 @@ void DebugIntegrate(int TotalParticleCount, const std::vector<float3>& ParticleP
 	float maxVelMag = 0.0f;
 	double avgVelMag = 0.0;
 
-	for (int i = 0; i < TotalParticleCount; i++) {
+	for (int i = 0; i < TotalParticleCount; i++){
 		float3 p = ParticlePositionList[i];
 		float3 v = ParticleVelocityList[i];
 
