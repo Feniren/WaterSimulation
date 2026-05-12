@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Simulation.cuh"
+#include "SimulationTimer.h"
 
 #include "Camera.h"
 #include "Shader.h"
@@ -302,6 +303,14 @@ int main(){
 	int StepsPerFrame = 5;
 	int TimeStep = 0;
 
+	WaterSimulation SimCPU(32, 32, 32);
+
+	SimCPU.InitializeSimulation();
+
+	TestCUDATiming(Sim, 1000);
+
+	TestCPUTiming(SimCPU, 1000);
+
 	while (!glfwWindowShouldClose(window)){
 		float CurrentFrame = static_cast<float>(glfwGetTime());
 
@@ -326,6 +335,8 @@ int main(){
 			100.0f
 		);
 
+		/*
+
 		for (int i = 0; i < StepsPerFrame; i++){
 			if ((TimeStep % 500) == 0){
 				Sim.Step(true);
@@ -343,6 +354,8 @@ int main(){
 				TimeStep++;
 			}
 		}
+
+		*/
 
 		ShaderReference.Use();
 

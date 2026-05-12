@@ -20,6 +20,7 @@ add_executable(WaterSimulation
 	src/Shader.cpp
 	src/Simulation.cu
 	src/SimulationDebug.cu
+	src/SimulationTimer.cpp
 	src/HashKernel.cu
 	src/CellBoundsKernel.cu
 	src/ParticleReorderKernel.cu

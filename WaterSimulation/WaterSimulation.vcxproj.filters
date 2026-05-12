@@ -39,6 +39,9 @@
     <ClCompile Include="src\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\SimulationTimer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Mesh.h">
@@ -61,6 +64,9 @@
     <ClInclude Include="src\IntegrationKernel.cuh" />
     <ClInclude Include="src\SimulationDebug.cuh" />
     <ClInclude Include="src\Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SimulationTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
