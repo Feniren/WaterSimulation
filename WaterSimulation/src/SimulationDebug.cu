@@ -136,7 +136,7 @@ void DebugComputePressure(int TotalParticleCount, const std::vector<float>& Part
 		<< TotalParticleCount
 		<< std::endl;
 
-	for (int i = 0; i < std::min(20, TotalParticleCount); i++){
+	for (int i = 0; i < std::min(2, TotalParticleCount); i++){
 		std::cout << "Particle " << i
 			<< " Density = " << ParticleDensityList[i]
 			<< " Pressure = " << ParticlePressureList[i]

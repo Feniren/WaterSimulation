@@ -17,6 +17,7 @@ find_package(OpenGL REQUIRED)
 add_executable(WaterSimulation
 	src/main.cpp
 	src/Camera.cpp
+	src/Shader.cpp
 	src/Simulation.cu
 	src/SimulationDebug.cu
 	src/HashKernel.cu

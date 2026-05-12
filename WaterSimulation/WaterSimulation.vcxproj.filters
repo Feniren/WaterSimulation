@@ -18,8 +18,10 @@
     <None Include="vcpkg.json" />
     <None Include="CMakePresets.json" />
     <None Include="CMakeUserPresets.json" />
-    <None Include="src\FragmentShader.frag" />
-    <None Include="src\VertexShader.vert" />
+    <None Include="src\Shaders\FragmentShader.frag" />
+    <None Include="src\Shaders\VertexShader.vert" />
+    <None Include="src\Shaders\SphereShader.frag" />
+    <None Include="src\Shaders\SphereShader.vert" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

@@ -1,8 +1,9 @@
 #include "Shader.h"
 
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -11,19 +12,23 @@ Shader::Shader(const char* VertexPath, const char* FragmentPath){
 	std::string vertexCode;
 	std::string fragmentCode;
 
+	std::cout << "Current working directory: "
+		<< std::filesystem::current_path()
+		<< std::endl;
+
 	std::ifstream vShaderFile(VertexPath);
 	std::ifstream fShaderFile(FragmentPath);
 
 	if (!vShaderFile.is_open()){
 		std::cerr << "ERROR::SHADER::FILE_NOT_FOUND\n"
 			<< "Could not open vertex shader file: "
-			<< vertexPath << std::endl;
+			<< VertexPath << std::endl;
 	}
 
 	if (!fShaderFile.is_open()){
 		std::cerr << "ERROR::SHADER::FILE_NOT_FOUND\n"
 			<< "Could not open fragment shader file: "
-			<< fragmentPath << std::endl;
+			<< FragmentPath << std::endl;
 	}
 
 	std::stringstream vShaderStream;
@@ -44,18 +49,18 @@ Shader::Shader(const char* VertexPath, const char* FragmentPath){
 	vertex = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertex, 1, &vCode, nullptr);
 	glCompileShader(vertex);
-	checkCompileErrors(vertex, "VERTEX");
+	CheckCompileErrors(vertex, "VERTEX");
 
 	fragment = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragment, 1, &fCode, nullptr);
 	glCompileShader(fragment);
-	checkCompileErrors(fragment, "FRAGMENT");
+	CheckCompileErrors(fragment, "FRAGMENT");
 
 	ID = glCreateProgram();
 	glAttachShader(ID, vertex);
 	glAttachShader(ID, fragment);
 	glLinkProgram(ID);
-	checkCompileErrors(ID, "PROGRAM");
+	CheckCompileErrors(ID, "PROGRAM");
 
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
